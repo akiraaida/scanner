@@ -1,5 +1,6 @@
 package com.example.akira.scanner;
 
+import android.content.Intent;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -27,14 +28,22 @@ import java.util.List;
 public class ScannerActivity extends AppCompatActivity implements CameraBridgeViewBase.CvCameraViewListener2 {
 
     private CameraBridgeViewBase mOpenCvCameraView;
+    private static float mLow = 50;
+    private static float mHigh = 200;
+    private static String mOption = "Default";
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
 
         super.onCreate(savedInstanceState);
-
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setContentView(R.layout.activity_scanner);
+
+        Intent intent = getIntent();
+        mOption = intent.getStringExtra("option");
+        mLow = intent.getFloatExtra("low", 50);
+        mHigh = intent.getFloatExtra("high", 200);
+
         mOpenCvCameraView = findViewById(R.id.cvView);
         mOpenCvCameraView.setVisibility(SurfaceView.VISIBLE);
         mOpenCvCameraView.setCvCameraViewListener(this);
@@ -57,16 +66,19 @@ public class ScannerActivity extends AppCompatActivity implements CameraBridgeVi
     public void onCameraViewStopped() {
     }
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
-        // Convert hte input frame to grey scale
+        Mat outputFrame = new Mat();
+
+        // Convert the input frame to grey scale
         Mat colorFrame = inputFrame.rgba();
         Mat grayFrame = inputFrame.gray();
         Mat blurFrame = new Mat();
         Mat edgeFrame = new Mat();
         List<MatOfPoint> contours = new ArrayList<>();
         // Blur the frame for pre-processing of canny
-        Imgproc.GaussianBlur(grayFrame, blurFrame, new Size(3,3), 1);
+        Imgproc.GaussianBlur(grayFrame, blurFrame, new Size(5,5), 0);
         // Detect the edges in the current frame
-        Imgproc.Canny(blurFrame, edgeFrame, 75, 150);
+        Imgproc.Canny(blurFrame, edgeFrame, mLow, mHigh);
+
         // Find the contours within the image using the edges found by canny
         Imgproc.findContours(edgeFrame, contours, new Mat(), Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_NONE);
 
@@ -83,21 +95,39 @@ public class ScannerActivity extends AppCompatActivity implements CameraBridgeVi
             }
         });
 
-        for (MatOfPoint contour : contours) {
-            MatOfPoint2f contour2f = new MatOfPoint2f();
-            MatOfPoint2f shape = new MatOfPoint2f();
-            contour.convertTo(contour2f, CvType.CV_32F);
-            double contourPerimeter = Imgproc.arcLength(contour2f, true);
-            Imgproc.approxPolyDP(contour2f, shape, 0.1 * contourPerimeter, true);
-            MatOfPoint points = new MatOfPoint( shape.toArray() );
+        if (mOption.compareTo("Default") == 0) {
+            for (MatOfPoint contour : contours) {
+                MatOfPoint2f contour2f = new MatOfPoint2f();
+                MatOfPoint2f shape = new MatOfPoint2f();
+                contour.convertTo(contour2f, CvType.CV_32F);
+                double contourPerimeter = Imgproc.arcLength(contour2f, true);
+                Imgproc.approxPolyDP(contour2f, shape, 0.1 * contourPerimeter, true);
+                MatOfPoint points = new MatOfPoint( shape.toArray() );
 
-            if (shape.toArray().length == 4) {
-                Rect rect = Imgproc.boundingRect(points);
-                Imgproc.rectangle(colorFrame, new Point(rect.x, rect.y), new Point(rect.x + rect.width, rect.y + rect.height), new Scalar(255, 0, 0), 3);
-                break;
+                if (shape.toArray().length == 4) {
+                    Rect rect = Imgproc.boundingRect(points);
+                    Imgproc.rectangle(colorFrame, new Point(rect.x, rect.y), new Point(rect.x + rect.width, rect.y + rect.height), new Scalar(255, 0, 0), 3);
+                }
             }
+            outputFrame = colorFrame;
+        } else {
+            for (MatOfPoint contour : contours) {
+                MatOfPoint2f contour2f = new MatOfPoint2f();
+                MatOfPoint2f shape = new MatOfPoint2f();
+                contour.convertTo(contour2f, CvType.CV_32F);
+                double contourPerimeter = Imgproc.arcLength(contour2f, true);
+                Imgproc.approxPolyDP(contour2f, shape, 0.1 * contourPerimeter, true);
+                MatOfPoint points = new MatOfPoint( shape.toArray() );
+
+                if (shape.toArray().length == 4) {
+                    Rect rect = Imgproc.boundingRect(points);
+                    Imgproc.rectangle(edgeFrame, new Point(rect.x, rect.y), new Point(rect.x + rect.width, rect.y + rect.height), new Scalar(255, 0, 0), 3);
+                }
+            }
+            outputFrame = edgeFrame;
         }
-        return colorFrame;
+
+        return outputFrame;
     }
 
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {

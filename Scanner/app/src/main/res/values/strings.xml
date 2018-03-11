@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">Scanner</string>
+    <string name="lower_hysteresis">Lower Hysteresis (50)</string>
+    <string name="update">Update</string>
+    <string name="high_hysteresis">High Hysteresis (200)</string>
+    <string name="scanner">Scanner</string>
 </resources>
