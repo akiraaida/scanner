@@ -20,8 +20,8 @@ public class LandingActivity extends AppCompatActivity {
 
     private static final int REQUEST_CAMERA_CODE = 1;
     private static int mPermission = 0;
-    private static float mLow = 50;
-    private static float mHigh = 200;
+    private static float mLow = 0;
+    private static float mHigh = 50;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -46,6 +46,9 @@ public class LandingActivity extends AppCompatActivity {
                     new String[]{Manifest.permission.CAMERA}, REQUEST_CAMERA_CODE);
         } else {
             mPermission = 1;
+            Intent scannerIntent = new Intent(LandingActivity.this, ScannerActivity.class);
+            startActivity(scannerIntent);
+//            finish();
         }
     }
 
@@ -57,6 +60,9 @@ public class LandingActivity extends AppCompatActivity {
                 if (grantResults.length > 0
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     mPermission = 1;
+                    Intent scannerIntent = new Intent(LandingActivity.this, ScannerActivity.class);
+                    startActivity(scannerIntent);
+//                    finish();
                 } else {
                     finish();
                 }
@@ -81,11 +87,7 @@ public class LandingActivity extends AppCompatActivity {
     public void submitScanner(View view) {
         if (mPermission != 0) {
             Spinner options = findViewById(R.id.options);
-            String option = options.getSelectedItem().toString();
             Intent scannerIntent = new Intent(LandingActivity.this, ScannerActivity.class);
-            scannerIntent.putExtra("option", option);
-            scannerIntent.putExtra("low", mLow);
-            scannerIntent.putExtra("high", mHigh);
             startActivity(scannerIntent);
         }
     }

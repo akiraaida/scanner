@@ -18,7 +18,6 @@ import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.Point;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
-import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
 import java.util.ArrayList;
@@ -28,9 +27,17 @@ import java.util.List;
 public class ScannerActivity extends AppCompatActivity implements CameraBridgeViewBase.CvCameraViewListener2 {
 
     private CameraBridgeViewBase mOpenCvCameraView;
-    private static float mLow = 50;
-    private static float mHigh = 200;
-    private static String mOption = "Default";
+    private static int mSameFrameCounter = 0;
+    private static Rect mSavedRect = null;
+
+    // Low Hysteresis (eliminates non meaningful edges)
+    private static final int LOW_HYSTERESIS = 5;
+    // High Hysteresis (determines definitive edges)
+    private static final int HIGH_HYSTERESIS = 50;
+    // First tier is a "red" box to show what is in focus
+    private static final int FOCUS_COUNTER_LEVEL_1 = 0;
+    // Second tier is a "green" box to show what is focus and that it has been in focus for 30 frames, once this number is exceeded a picture will be taken
+    private static final int FOCUS_COUNTER_LEVEL_2 = 5;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -38,11 +45,6 @@ public class ScannerActivity extends AppCompatActivity implements CameraBridgeVi
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setContentView(R.layout.activity_scanner);
-
-        Intent intent = getIntent();
-        mOption = intent.getStringExtra("option");
-        mLow = intent.getFloatExtra("low", 50);
-        mHigh = intent.getFloatExtra("high", 200);
 
         mOpenCvCameraView = findViewById(R.id.cvView);
         mOpenCvCameraView.setVisibility(SurfaceView.VISIBLE);
@@ -65,23 +67,75 @@ public class ScannerActivity extends AppCompatActivity implements CameraBridgeVi
     }
     public void onCameraViewStopped() {
     }
-    public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
-        Mat outputFrame = new Mat();
 
-        // Convert the input frame to grey scale
-        Mat colorFrame = inputFrame.rgba();
-        Mat grayFrame = inputFrame.gray();
+    public boolean checkRect(Rect rect) {
+        // Get the 4 coords out the current rectangle bounding box
+        Point p1 = new Point(rect.x, rect.y);
+        Point p2 = new Point(rect.x + rect.width, rect.y);
+        Point p3 = new Point(rect.x, rect.y + rect.height);
+        Point p4 = new Point(rect.x + rect.width, rect.y + rect.height);
+        Point currPoints[] = {p1, p2, p3, p4};
+
+        // If the saved frame is null then return it as true, otherwise check that the current rectangle
+        // is within the tolerance of the previous rectangle (need the rectangle to be somewhat consistent
+        // so don't capture garbage or the wrong thing).
+        if (mSavedRect == null) {
+            mSavedRect = rect;
+            return true;
+        } else {
+            // Get the previous points for the last saved rectangle
+            Point prevP1 = new Point(mSavedRect.x, mSavedRect.y);
+            Point prevP2 = new Point(mSavedRect.x + mSavedRect.width, mSavedRect.y);
+            Point prevP3 = new Point(mSavedRect.x, mSavedRect.y + mSavedRect.height);
+            Point prevP4 = new Point(mSavedRect.x + mSavedRect.width, mSavedRect.y + mSavedRect.height);
+            Point prevPoints[] = {prevP1, prevP2, prevP3, prevP4};
+
+            for(int i = 0; i < currPoints.length; ++i) {
+                if(!checkTol(currPoints[i], prevPoints[i])) {
+                    // If the tolerance check fails, reset the saved frame and return false
+                    mSavedRect = null;
+                    return false;
+                }
+            }
+            // Update the previous frame to the current frame since the tolerance check passed
+            mSavedRect = rect;
+        }
+        return true;
+    }
+
+    // Assumption is p1 is the current rectangle point and p2 is the previous rectangle point
+    public boolean checkTol(Point p1, Point p2) {
+        double xDiff = Math.abs(p1.x - p2.x);
+        double yDiff = Math.abs(p1.y - p2.y);
+
+        // 5% tolerance on the shift of x/y from previous frames
+        double xTol = p2.x * 0.05;
+        double yTol = p2.y * 0.05;
+
+        if (xDiff <= xTol && yDiff <= yTol) {
+            return true;
+        }
+        return false;
+    }
+
+    public Mat findFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
+        Mat dispFrame = inputFrame.rgba();
+        // Convert the image to grey scale
+        Mat greyFrame = inputFrame.gray();
+
+        // Use a bilateral filter to keep edges and remove noise
         Mat blurFrame = new Mat();
+        Imgproc.bilateralFilter(greyFrame, blurFrame, 5, 100, 100);
+
+        // Use canny edge detection to detect the edges
         Mat edgeFrame = new Mat();
-        List<MatOfPoint> contours = new ArrayList<>();
-        // Blur the frame for pre-processing of canny
-        Imgproc.GaussianBlur(grayFrame, blurFrame, new Size(5,5), 0);
-        // Detect the edges in the current frame
-        Imgproc.Canny(blurFrame, edgeFrame, mLow, mHigh);
+        Imgproc.Canny(blurFrame, edgeFrame, LOW_HYSTERESIS, HIGH_HYSTERESIS);
 
         // Find the contours within the image using the edges found by canny
+        List<MatOfPoint> contours = new ArrayList<>();
         Imgproc.findContours(edgeFrame, contours, new Mat(), Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_NONE);
 
+        // Sort the contours based on area (largest area is likely to be our expected frame)
         contours.sort(new Comparator<MatOfPoint>() {
             @Override
             public int compare(MatOfPoint contour1, MatOfPoint contour2) {
@@ -95,39 +149,47 @@ public class ScannerActivity extends AppCompatActivity implements CameraBridgeVi
             }
         });
 
-        if (mOption.compareTo("Default") == 0) {
-            for (MatOfPoint contour : contours) {
-                MatOfPoint2f contour2f = new MatOfPoint2f();
-                MatOfPoint2f shape = new MatOfPoint2f();
-                contour.convertTo(contour2f, CvType.CV_32F);
-                double contourPerimeter = Imgproc.arcLength(contour2f, true);
-                Imgproc.approxPolyDP(contour2f, shape, 0.1 * contourPerimeter, true);
-                MatOfPoint points = new MatOfPoint( shape.toArray() );
+        // Figure out which contour is the frame we want
+        for (MatOfPoint contour : contours) {
+            MatOfPoint2f contour2f = new MatOfPoint2f();
+            MatOfPoint2f shape = new MatOfPoint2f();
+            contour.convertTo(contour2f, CvType.CV_32F);
+            double contourPerimeter = Imgproc.arcLength(contour2f, true);
+            Imgproc.approxPolyDP(contour2f, shape, 0.02 * contourPerimeter, true);
+            Point[] shapeArr = shape.toArray();
+            MatOfPoint points = new MatOfPoint(shapeArr);
 
-                if (shape.toArray().length == 4) {
-                    Rect rect = Imgproc.boundingRect(points);
-                    Imgproc.rectangle(colorFrame, new Point(rect.x, rect.y), new Point(rect.x + rect.width, rect.y + rect.height), new Scalar(255, 0, 0), 3);
+            if (shapeArr.length == 4) {
+                Rect rect = Imgproc.boundingRect(points);
+                boolean sameRect = checkRect(rect);
+                if (sameRect) {
+                    mSameFrameCounter += 1;
+                    Log.i("AKIRA-COUNTER", mSameFrameCounter + "");
+                } else {
+                    mSameFrameCounter = 0;
                 }
-            }
-            outputFrame = colorFrame;
-        } else {
-            for (MatOfPoint contour : contours) {
-                MatOfPoint2f contour2f = new MatOfPoint2f();
-                MatOfPoint2f shape = new MatOfPoint2f();
-                contour.convertTo(contour2f, CvType.CV_32F);
-                double contourPerimeter = Imgproc.arcLength(contour2f, true);
-                Imgproc.approxPolyDP(contour2f, shape, 0.1 * contourPerimeter, true);
-                MatOfPoint points = new MatOfPoint( shape.toArray() );
-
-                if (shape.toArray().length == 4) {
-                    Rect rect = Imgproc.boundingRect(points);
-                    Imgproc.rectangle(edgeFrame, new Point(rect.x, rect.y), new Point(rect.x + rect.width, rect.y + rect.height), new Scalar(255, 0, 0), 3);
+                if (mSameFrameCounter < FOCUS_COUNTER_LEVEL_1) {
+                    Imgproc.rectangle(dispFrame, new Point(rect.x, rect.y), new Point(rect.x + rect.width, rect.y + rect.height), new Scalar(255, 0, 0), 3);
+                } else if (mSameFrameCounter < FOCUS_COUNTER_LEVEL_2) {
+                    Imgproc.rectangle(dispFrame, new Point(rect.x, rect.y), new Point(rect.x + rect.width, rect.y + rect.height), new Scalar(0, 255, 0), 3);
+                } else {
+                    // Take the picture by sending the address of the current frame to the display activity
+                    Intent intent = new Intent(ScannerActivity.this, DisplayActivity.class);
+                    long address = dispFrame.getNativeObjAddr();
+                    Log.i("AKIRA-DIM1", dispFrame.height() + ", " + dispFrame.width());
+                    Mat test = new Mat(address);
+                    Log.i("AKIRA-DIM2", test.height() + ", " + test.width());
+                    intent.putExtra("ImageAddress", address);
+                    startActivity(intent);
                 }
+                break;
             }
-            outputFrame = edgeFrame;
         }
+        return dispFrame;
+    }
 
-        return outputFrame;
+    public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
+        return findFrame(inputFrame);
     }
 
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
