@@ -1,6 +1,7 @@
 package com.example.akira.scanner;
 
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -11,6 +12,8 @@ import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
+import org.opencv.android.Utils;
+import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
@@ -20,6 +23,10 @@ import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
 import org.opencv.imgproc.Imgproc;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -31,11 +38,11 @@ public class ScannerActivity extends AppCompatActivity implements CameraBridgeVi
     private static Rect mSavedRect = null;
 
     // Low Hysteresis (eliminates non meaningful edges)
-    private static final int LOW_HYSTERESIS = 5;
+    private static final int LOW_HYSTERESIS = 25;
     // High Hysteresis (determines definitive edges)
-    private static final int HIGH_HYSTERESIS = 50;
+    private static final int HIGH_HYSTERESIS = 80;
     // First tier is a "red" box to show what is in focus
-    private static final int FOCUS_COUNTER_LEVEL_1 = 0;
+    private static final int FOCUS_COUNTER_LEVEL_1 = 3;
     // Second tier is a "green" box to show what is focus and that it has been in focus for 30 frames, once this number is exceeded a picture will be taken
     private static final int FOCUS_COUNTER_LEVEL_2 = 5;
 
@@ -125,7 +132,8 @@ public class ScannerActivity extends AppCompatActivity implements CameraBridgeVi
 
         // Use a bilateral filter to keep edges and remove noise
         Mat blurFrame = new Mat();
-        Imgproc.bilateralFilter(greyFrame, blurFrame, 5, 100, 100);
+//        Imgproc.GaussianBlur(greyFrame, blurFrame, new Size(5, 5), 5);
+        Imgproc.bilateralFilter(greyFrame, blurFrame, 5, 200, 200);
 
         // Use canny edge detection to detect the edges
         Mat edgeFrame = new Mat();
@@ -173,19 +181,44 @@ public class ScannerActivity extends AppCompatActivity implements CameraBridgeVi
                 } else if (mSameFrameCounter < FOCUS_COUNTER_LEVEL_2) {
                     Imgproc.rectangle(dispFrame, new Point(rect.x, rect.y), new Point(rect.x + rect.width, rect.y + rect.height), new Scalar(0, 255, 0), 3);
                 } else {
-                    // Take the picture by sending the address of the current frame to the display activity
+                    // Get the region of interest
+                    Point tl = new Point(rect.x, rect.y);
+                    Point br = new Point(rect.x + rect.width, rect.y + rect.height);
+                    Rect roi = new Rect(tl, br);
+                    // Crop the frame to just the region of interest
+                    dispFrame = new Mat(dispFrame, roi);
+                    // Rotate the frame since the camera is in landscape mode
+                    Core.flip(dispFrame.t(), dispFrame, 1);
+                    // Convert the frame to an image
+                    Bitmap img = Bitmap.createBitmap(dispFrame.cols(), dispFrame.rows(),Bitmap.Config.ARGB_8888);
+                    Utils.matToBitmap(dispFrame, img);
+                    // Save the image locally
+                    String path = storeImage(img);
+                    // Send the path to the display activity
                     Intent intent = new Intent(ScannerActivity.this, DisplayActivity.class);
-                    long address = dispFrame.getNativeObjAddr();
-                    Log.i("AKIRA-DIM1", dispFrame.height() + ", " + dispFrame.width());
-                    Mat test = new Mat(address);
-                    Log.i("AKIRA-DIM2", test.height() + ", " + test.width());
-                    intent.putExtra("ImageAddress", address);
+                    intent.putExtra("imgPath", path);
                     startActivity(intent);
+                    finish();
                 }
                 break;
             }
         }
         return dispFrame;
+    }
+
+    // TODO: Move this into a callback thread since it can hang the UI
+    private String storeImage(Bitmap image) {
+        File file = new File(this.getFilesDir(), "temp.jpeg");
+        try {
+            FileOutputStream fos = new FileOutputStream(file);
+            image.compress(Bitmap.CompressFormat.PNG, 90, fos);
+            fos.close();
+        } catch (FileNotFoundException e) {
+            Log.e("ERROR", e.getStackTrace().toString());
+        } catch (IOException e) {
+            Log.e("ERROR", e.getStackTrace().toString());
+        }
+        return file.getAbsolutePath();
     }
 
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
