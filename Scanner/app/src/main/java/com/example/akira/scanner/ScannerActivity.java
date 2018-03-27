@@ -8,6 +8,8 @@ import android.util.Log;
 import android.view.SurfaceView;
 import android.view.WindowManager;
 
+import com.googlecode.tesseract.android.TessBaseAPI;
+
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase;
 import org.opencv.android.LoaderCallbackInterface;

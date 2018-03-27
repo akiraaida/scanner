@@ -8,6 +8,8 @@ import android.os.Bundle;
 import android.util.Log;
 import android.widget.ImageView;
 
+import com.googlecode.tesseract.android.TessBaseAPI;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -30,6 +32,11 @@ public class DisplayActivity extends AppCompatActivity {
             Bitmap b = BitmapFactory.decodeStream(new FileInputStream(f));
             ImageView img = findViewById(R.id.displayImage);
             img.setImageBitmap(b);
+            TessBaseAPI tess = new TessBaseAPI();
+            tess.init(this.getFilesDir().getAbsolutePath(), "eng");
+            tess.setImage(b);
+            String text = tess.getUTF8Text();
+            Log.i("AKIRA_TEST", text);
         }
         catch (FileNotFoundException e)
         {
