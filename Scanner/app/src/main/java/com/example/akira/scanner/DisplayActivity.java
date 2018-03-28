@@ -1,11 +1,15 @@
 package com.example.akira.scanner;
 
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.MotionEvent;
+import android.view.View;
 import android.widget.ImageView;
+import android.widget.TextView;
 
 import com.googlecode.tesseract.android.TessBaseAPI;
 
@@ -28,11 +32,15 @@ import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
+
 
 public class DisplayActivity extends AppCompatActivity {
 
     TessBaseAPI mTess = null;
+    int mHeightLen = -1;
+    int mFalsePos = -1;
+    int mFalseCaptureHeight = -1;
+    int mFalseCaptureWidth = -1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,10 +49,6 @@ public class DisplayActivity extends AppCompatActivity {
 
         mTess = new TessBaseAPI();
         mTess.init(this.getFilesDir().getAbsolutePath(), "eng");
-
-        // TODO: Re-add this
-        //Intent intent = getIntent();
-        //String imgPath = intent.getStringExtra("imgPath");
     }
 
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
@@ -55,6 +59,9 @@ public class DisplayActivity extends AppCompatActivity {
                 {
                     Log.i("onManager", "OpenCV loaded successfully");
                     String imgPath = DisplayActivity.this.getFilesDir().getAbsolutePath() + "/receipt.jpg";
+                    // TODO: Re-add this
+//                    Intent intent = getIntent();
+//                    String imgPath = intent.getStringExtra("imgPath");
                     loadImageFromStorage(imgPath);
                 } break;
                 default:
@@ -78,6 +85,10 @@ public class DisplayActivity extends AppCompatActivity {
         try {
             File f = new File(path);
             Bitmap b = BitmapFactory.decodeStream(new FileInputStream(f));
+            mHeightLen = (b.getHeight() / 100)*2;
+            mFalsePos = (b.getHeight() / 100);
+            mFalseCaptureHeight = (b.getHeight() / 100) * 50;
+            mFalseCaptureWidth = (b.getWidth() / 100) * 50;
             processImg(b);
         }
         catch (FileNotFoundException e)
@@ -118,32 +129,35 @@ public class DisplayActivity extends AppCompatActivity {
         // Use the cross kernel which will increase the response in both the x and y direction.
         Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_CROSS, new Size(3, 3));
         Mat dilated = new Mat();
-        Imgproc.dilate(mask, dilated, kernel, new Point(-1, -1), 7);
+        Imgproc.dilate(mask, dilated, kernel, new Point(-1, -1), 9);
         Mat temp = new Mat();
         dilated.copyTo(temp);
         List<MatOfPoint> contours = new ArrayList<>();
         Imgproc.findContours(temp, contours, new Mat(), Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_NONE);
-        List<Rect> rects = filterContours(contours);
-        for (Rect rect : rects) {
-            Imgproc.rectangle(origMat, new Point(rect.x, rect.y), new Point(rect.x + rect.width, rect.y + rect.height), new Scalar(0, 0, 255), 2);
+        List<Rect> boundingBoxes = filterContours(contours);
+        for (Rect rect : boundingBoxes) {
+            Imgproc.rectangle(origMat, new Point(rect.x, rect.y), new Point(rect.x + rect.width, rect.y + rect.height), new Scalar(255, 0, 0, 255), 2);
+            Mat text = new Mat(origMat, rect);
+            detectText(text);
         }
         Bitmap orig = convertMat(origMat);
         dispImage(orig);
     }
 
     private List<Rect> filterContours(List<MatOfPoint> contours) {
-        // Remove all small boxes that are false positives
-        contours.removeIf(contour -> contour.height() < 20 && contour.width() < 20);
         // Get the bounding box for each contour
         List<Rect> rects = contours.stream().map(contour -> Imgproc.boundingRect(contour)).collect(Collectors.toList());
+        // Remove all small boxes that are false positives
+        rects.removeIf(rect -> rect.height < mFalsePos && rect.width < mFalsePos);
+        // Remove the large false positives
+        rects.removeIf(rect -> (rect.height > mFalseCaptureHeight && rect.width > mFalseCaptureWidth));
         List<List<Rect>> sim = new ArrayList<>();
         while (rects.size() > 0) {
             Rect rect = rects.get(0);
             int bot = rect.y;
             int top = rect.y + rect.height;
-            // 5 pixel leniency on top and bottom
-            List<Rect> similar = rects.stream().filter(r -> ((Math.abs(r.y - bot) <= 5) && (Math.abs(r.y + r.height) - top) <= 5)).collect(Collectors.toList());
-            rects = rects.stream().filter(r -> ((Math.abs(r.y - bot) > 5) || (Math.abs(r.y + r.height) - top) > 5)).collect(Collectors.toList());
+            List<Rect> similar = rects.stream().filter(r -> ((Math.abs(r.y - bot) <= mHeightLen) && (Math.abs(r.y + r.height) - top) <= mHeightLen)).collect(Collectors.toList());
+            rects = rects.stream().filter(r -> ((Math.abs(r.y - bot) > mHeightLen) || (Math.abs(r.y + r.height) - top) > mHeightLen)).collect(Collectors.toList());
             sim.add(similar);
         }
         List<Rect> boundingBoxes = new ArrayList<>();
@@ -174,7 +188,6 @@ public class DisplayActivity extends AppCompatActivity {
         dispImage(bmp);
         mTess.setImage(bmp);
         String text = mTess.getUTF8Text();
-//        TextView textView = findViewById(R.id.ocrText);
-//        textView.setText(text);
+        Log.d("AKIRA_TEXT", text);
     }
 }
