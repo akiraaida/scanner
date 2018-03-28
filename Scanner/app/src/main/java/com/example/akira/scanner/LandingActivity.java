@@ -8,12 +8,6 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 
-import android.widget.ArrayAdapter;
-import android.widget.Spinner;
-
-import java.util.ArrayList;
-import java.util.List;
-
 public class LandingActivity extends AppCompatActivity {
 
     private static final int REQUEST_CAMERA_CODE = 1;

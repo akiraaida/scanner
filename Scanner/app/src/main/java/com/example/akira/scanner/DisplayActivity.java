@@ -1,14 +1,11 @@
 package com.example.akira.scanner;
 
-import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.media.Image;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.ImageView;
-import android.widget.TextView;
 
 import com.googlecode.tesseract.android.TessBaseAPI;
 
@@ -30,13 +27,21 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class DisplayActivity extends AppCompatActivity {
+
+    TessBaseAPI mTess = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_display);
+
+        mTess = new TessBaseAPI();
+        mTess.init(this.getFilesDir().getAbsolutePath(), "eng");
+
         // TODO: Re-add this
         //Intent intent = getIntent();
         //String imgPath = intent.getStringExtra("imgPath");
@@ -81,19 +86,28 @@ public class DisplayActivity extends AppCompatActivity {
         }
     }
 
-    private void dispImage(Mat mat) {
-        Bitmap img = Bitmap.createBitmap(mat.cols(), mat.rows(),Bitmap.Config.ARGB_8888);
-        Utils.matToBitmap(mat, img);
+    private void dispImage(Bitmap bmp) {
         ImageView imgView = findViewById(R.id.displayImage);
-        imgView.setImageBitmap(img);
+        imgView.setImageBitmap(bmp);
+    }
+
+    private Bitmap convertMat(Mat mat) {
+        Bitmap bmp = Bitmap.createBitmap(mat.cols(), mat.rows(),Bitmap.Config.ARGB_8888);
+        Utils.matToBitmap(mat, bmp);
+        return bmp;
+    }
+
+    private Mat convertBitmap(Bitmap bmp) {
+        Mat mat = new Mat (bmp.getHeight(), bmp.getWidth(), CvType.CV_8UC1);
+        Utils.bitmapToMat(bmp, mat);
+        return mat;
     }
 
     private void processImg(Bitmap bmp) {
         // Convert the Bitmap object to a Mat object to use for CV.
-        Mat mat = new Mat (bmp.getHeight(), bmp.getWidth(), CvType.CV_8UC1);
-        Utils.bitmapToMat(bmp, mat);
-        Mat orig = new Mat();
-        mat.copyTo(orig);
+        Mat mat = convertBitmap(bmp);
+        Mat origMat = new Mat();
+        mat.copyTo(origMat);
         // Convert the Mat object from BGR color code to gray scale.
         Imgproc.cvtColor(mat, mat, Imgproc.COLOR_BGR2GRAY);
         // Create an inverse color threshold from 180-255 on the original image to create a mask.
@@ -104,26 +118,63 @@ public class DisplayActivity extends AppCompatActivity {
         // Use the cross kernel which will increase the response in both the x and y direction.
         Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_CROSS, new Size(3, 3));
         Mat dilated = new Mat();
-        Imgproc.dilate(mask, dilated, kernel, new Point(-1, -1), 9);
+        Imgproc.dilate(mask, dilated, kernel, new Point(-1, -1), 7);
         Mat temp = new Mat();
         dilated.copyTo(temp);
         List<MatOfPoint> contours = new ArrayList<>();
         Imgproc.findContours(temp, contours, new Mat(), Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_NONE);
-        for (MatOfPoint contour : contours) {
-            Rect rect = Imgproc.boundingRect(contour);
-            if (rect.width > 20 && rect.height > 20) {
-                Imgproc.rectangle(orig, new Point(rect.x, rect.y), new Point(rect.x + rect.width, rect.y + rect.height), new Scalar(255, 0, 0), 2);
-            }
+        List<Rect> rects = filterContours(contours);
+        for (Rect rect : rects) {
+            Imgproc.rectangle(origMat, new Point(rect.x, rect.y), new Point(rect.x + rect.width, rect.y + rect.height), new Scalar(0, 0, 255), 2);
         }
+        Bitmap orig = convertMat(origMat);
         dispImage(orig);
     }
 
-    private void detectText(Bitmap b) {
-        TessBaseAPI tess = new TessBaseAPI();
-        tess.init(this.getFilesDir().getAbsolutePath(), "eng");
-        tess.setImage(b);
-        String text = tess.getUTF8Text();
-        TextView textView = findViewById(R.id.ocrText);
-        textView.setText(text);
+    private List<Rect> filterContours(List<MatOfPoint> contours) {
+        // Remove all small boxes that are false positives
+        contours.removeIf(contour -> contour.height() < 20 && contour.width() < 20);
+        // Get the bounding box for each contour
+        List<Rect> rects = contours.stream().map(contour -> Imgproc.boundingRect(contour)).collect(Collectors.toList());
+        List<List<Rect>> sim = new ArrayList<>();
+        while (rects.size() > 0) {
+            Rect rect = rects.get(0);
+            int bot = rect.y;
+            int top = rect.y + rect.height;
+            // 5 pixel leniency on top and bottom
+            List<Rect> similar = rects.stream().filter(r -> ((Math.abs(r.y - bot) <= 5) && (Math.abs(r.y + r.height) - top) <= 5)).collect(Collectors.toList());
+            rects = rects.stream().filter(r -> ((Math.abs(r.y - bot) > 5) || (Math.abs(r.y + r.height) - top) > 5)).collect(Collectors.toList());
+            sim.add(similar);
+        }
+        List<Rect> boundingBoxes = new ArrayList<>();
+        for (List<Rect> horizRects : sim) {
+            Point tl = new Point(horizRects.get(0).x, horizRects.get(0).y);
+            Point br = new Point(horizRects.get(0).x + horizRects.get(0).width, horizRects.get(0).y + horizRects.get(0).height);
+            for (Rect rect : horizRects) {
+                if (rect.x < tl.x) {
+                    tl = new Point(rect.x, tl.y);
+                }
+                if (rect.y < tl.y) {
+                    tl = new Point(tl.x, rect.y);
+                }
+                if (rect.x + rect.width > br.x) {
+                    br = new Point(rect.x + rect.width, br.y);
+                }
+                if (rect.y + rect.height > br.y) {
+                    br = new Point(br.x, rect.y + rect.height);
+                }
+            }
+            boundingBoxes.add(new Rect(tl, br));
+        }
+        return boundingBoxes;
+    }
+
+    private void detectText(Mat mat) {
+        Bitmap bmp = convertMat(mat);
+        dispImage(bmp);
+        mTess.setImage(bmp);
+        String text = mTess.getUTF8Text();
+//        TextView textView = findViewById(R.id.ocrText);
+//        textView.setText(text);
     }
 }
