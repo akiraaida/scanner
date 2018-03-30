@@ -46,8 +46,9 @@ public class ScannerActivity extends AppCompatActivity implements CameraBridgeVi
     private static final int HIGH_HYSTERESIS = 80;
     // First tier is a "red" box to show what is in focus
     private static final int FOCUS_COUNTER_LEVEL_1 = 3;
-    // Second tier is a "green" box to show what is focus and that it has been in focus for 30 frames, once this number is exceeded a picture will be taken
+    // Second tier is a "green" box to show what is focus and that it has been in focus for x30 frames, once this number is exceeded a picture will be taken
     private static final int FOCUS_COUNTER_LEVEL_2 = 5;
+    // Toggle the detection on or off
     public static int mToggle = 0;
 
     @Override

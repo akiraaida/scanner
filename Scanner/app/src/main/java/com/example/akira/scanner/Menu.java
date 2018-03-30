@@ -1,6 +1,7 @@
 package com.example.akira.scanner;
 
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.Bundle;
@@ -87,6 +88,9 @@ public class Menu extends Fragment {
         galleryButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                Intent intent = new Intent(view.getContext(), GalleryActivity.class);
+                startActivity(intent);
+                getActivity().finish();
             }
         });
 

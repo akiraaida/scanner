@@ -27,13 +27,15 @@
         <activity android:name=".LandingActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
         <activity
             android:name=".ScannerActivity"
-            android:screenOrientation="landscape"></activity>
-        <activity android:name=".DisplayActivity"></activity>
+            android:screenOrientation="landscape" />
+        <activity android:name=".DisplayActivity" />
+        <activity android:name=".GalleryActivity"></activity>
     </application>
 
 </manifest>
