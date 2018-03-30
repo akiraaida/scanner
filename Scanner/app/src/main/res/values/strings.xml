@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">RScanner</string>
+    <string name="saveBtn">Save</string>
+    <string name="deleteBtn">Delete</string>
 </resources>

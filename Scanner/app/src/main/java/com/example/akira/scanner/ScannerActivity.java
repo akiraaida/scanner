@@ -31,8 +31,10 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
 
 public class ScannerActivity extends AppCompatActivity implements CameraBridgeViewBase.CvCameraViewListener2, Menu.OnFragmentInteractionListener {
@@ -224,7 +226,9 @@ public class ScannerActivity extends AppCompatActivity implements CameraBridgeVi
 
     // TODO: Move this into another thread since it can hang the UI
     private String storeImage(Bitmap image) {
-        File file = new File(this.getFilesDir(), "temp.jpeg");
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        String millisInString  = dateFormat.format(new Date());
+        File file = new File(this.getFilesDir(), millisInString + ".jpeg");
         try {
             FileOutputStream fos = new FileOutputStream(file);
             image.compress(Bitmap.CompressFormat.PNG, 90, fos);

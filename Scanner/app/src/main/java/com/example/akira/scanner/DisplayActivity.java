@@ -5,8 +5,8 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
-import android.view.MotionEvent;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -36,16 +36,20 @@ import java.util.stream.Collectors;
 
 public class DisplayActivity extends AppCompatActivity {
 
-    TessBaseAPI mTess = null;
-    int mHeightLen = -1;
-    int mFalsePos = -1;
-    int mFalseCaptureHeight = -1;
-    int mFalseCaptureWidth = -1;
+    private TessBaseAPI mTess = null;
+    private int mHeightLen = -1;
+    private int mFalsePos = -1;
+    private int mFalseCaptureHeight = -1;
+    private int mFalseCaptureWidth = -1;
+    private String mImgPath = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_display);
+
+        TextView textView = findViewById(R.id.dispText);
+        textView.setMovementMethod(new ScrollingMovementMethod());
 
         mTess = new TessBaseAPI();
         mTess.init(this.getFilesDir().getAbsolutePath(), "eng");
@@ -58,10 +62,10 @@ public class DisplayActivity extends AppCompatActivity {
                 case LoaderCallbackInterface.SUCCESS:
                 {
                     Log.i("onManager", "OpenCV loaded successfully");
-//                    String imgPath = DisplayActivity.this.getFilesDir().getAbsolutePath() + "/receipt.jpg";
-                    Intent intent = getIntent();
-                    String imgPath = intent.getStringExtra("imgPath");
-                    loadImageFromStorage(imgPath);
+                    mImgPath = DisplayActivity.this.getFilesDir().getAbsolutePath() + "/receipt.jpg";
+//                    Intent intent = getIntent();
+//                    String mImgPath = intent.getStringExtra("imgPath");
+                    loadImageFromStorage(mImgPath);
                 } break;
                 default:
                 {
@@ -77,7 +81,6 @@ public class DisplayActivity extends AppCompatActivity {
         super.onResume();
         OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_0_0, this, mLoaderCallback);
     }
-
 
     // TODO: Move this into a callback function
     private void loadImageFromStorage(String path) {
@@ -123,12 +126,12 @@ public class DisplayActivity extends AppCompatActivity {
         // Create an inverse color threshold from 180-255 on the original image to create a mask.
         // Since it's inverse, the colors kept will be the blacks from 0-75 (the text color).
         Mat mask = new Mat();
-        Imgproc.threshold(mat, mask, 180, 255, Imgproc.THRESH_BINARY_INV);
+        Imgproc.threshold(mat, mask, 100, 255, Imgproc.THRESH_BINARY_INV);
         // Grow the mask's response by dilating it to determine where the text is later on.
         // Use the cross kernel which will increase the response in both the x and y direction.
         Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_CROSS, new Size(3, 3));
         Mat dilated = new Mat();
-        Imgproc.dilate(mask, dilated, kernel, new Point(-1, -1), 9);
+        Imgproc.dilate(mask, dilated, kernel, new Point(-1, -1), 7);
         Mat temp = new Mat();
         dilated.copyTo(temp);
         List<MatOfPoint> contours = new ArrayList<>();
@@ -187,9 +190,29 @@ public class DisplayActivity extends AppCompatActivity {
         dispImage(bmp);
         mTess.setImage(bmp);
         String text = mTess.getUTF8Text();
-        TextView textView = findViewById(R.id.dispText);
-        String currentText = textView.getText().toString();
-        currentText += "\n" + text;
-        textView.setText(currentText);
+        if (text.contains("$")) {
+            TextView textView = findViewById(R.id.dispText);
+            String currentText = textView.getText().toString();
+            if (!currentText.isEmpty()) {
+                currentText += "\n" + text;
+            } else {
+                currentText = text;
+            }
+            textView.setText(currentText);
+        }
+    }
+
+    public void onSave(View view) {
+        Intent intent = new Intent(DisplayActivity.this, ScannerActivity.class);
+        startActivity(intent);
+        finish();
+    }
+
+    public void onDelete(View view) {
+        File file = new File(mImgPath);
+        file.delete();
+        Intent intent = new Intent(DisplayActivity.this, ScannerActivity.class);
+        startActivity(intent);
+        finish();
     }
 }
