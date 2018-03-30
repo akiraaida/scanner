@@ -2,10 +2,12 @@ package com.example.akira.scanner;
 
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.net.Uri;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.SurfaceView;
+import android.view.View;
 import android.view.WindowManager;
 
 import com.googlecode.tesseract.android.TessBaseAPI;
@@ -33,7 +35,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-public class ScannerActivity extends AppCompatActivity implements CameraBridgeViewBase.CvCameraViewListener2 {
+public class ScannerActivity extends AppCompatActivity implements CameraBridgeViewBase.CvCameraViewListener2, Menu.OnFragmentInteractionListener {
 
     private CameraBridgeViewBase mOpenCvCameraView;
     private static int mSameFrameCounter = 0;
@@ -47,6 +49,7 @@ public class ScannerActivity extends AppCompatActivity implements CameraBridgeVi
     private static final int FOCUS_COUNTER_LEVEL_1 = 3;
     // Second tier is a "green" box to show what is focus and that it has been in focus for 30 frames, once this number is exceeded a picture will be taken
     private static final int FOCUS_COUNTER_LEVEL_2 = 5;
+    public static int mToggle = 0;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -224,7 +227,11 @@ public class ScannerActivity extends AppCompatActivity implements CameraBridgeVi
     }
 
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
-        return findFrame(inputFrame);
+        if (mToggle == 0) {
+            return inputFrame.rgba();
+        } else {
+            return findFrame(inputFrame);
+        }
     }
 
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
@@ -249,5 +256,10 @@ public class ScannerActivity extends AppCompatActivity implements CameraBridgeVi
     {
         super.onResume();
         OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_0_0, this, mLoaderCallback);
+    }
+
+    @Override
+    public void onFragmentInteraction(Uri uri) {
+
     }
 }
