@@ -58,10 +58,9 @@ public class DisplayActivity extends AppCompatActivity {
                 case LoaderCallbackInterface.SUCCESS:
                 {
                     Log.i("onManager", "OpenCV loaded successfully");
-                    String imgPath = DisplayActivity.this.getFilesDir().getAbsolutePath() + "/receipt.jpg";
-                    // TODO: Re-add this
-//                    Intent intent = getIntent();
-//                    String imgPath = intent.getStringExtra("imgPath");
+//                    String imgPath = DisplayActivity.this.getFilesDir().getAbsolutePath() + "/receipt.jpg";
+                    Intent intent = getIntent();
+                    String imgPath = intent.getStringExtra("imgPath");
                     loadImageFromStorage(imgPath);
                 } break;
                 default:
@@ -188,6 +187,9 @@ public class DisplayActivity extends AppCompatActivity {
         dispImage(bmp);
         mTess.setImage(bmp);
         String text = mTess.getUTF8Text();
-        Log.d("AKIRA_TEXT", text);
+        TextView textView = findViewById(R.id.dispText);
+        String currentText = textView.getText().toString();
+        currentText += "\n" + text;
+        textView.setText(currentText);
     }
 }

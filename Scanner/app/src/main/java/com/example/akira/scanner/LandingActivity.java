@@ -1,6 +1,7 @@
 package com.example.akira.scanner;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
@@ -44,7 +45,7 @@ public class LandingActivity extends AppCompatActivity {
     }
 
     private boolean assetsExist() {
-        File file = getBaseContext().getFileStreamPath("eng.traineddata");
+        File file = new File(this.getFilesDir().getAbsolutePath() + "/tessdata/eng.traineddata");
         return file.exists();
     }
 
@@ -58,28 +59,34 @@ public class LandingActivity extends AppCompatActivity {
         }
         if (files != null) {
             for (String fileName : files) {
-                InputStream in = null;
-                OutputStream out = null;
-                try {
-                    in = assetManager.open(fileName);
-                    File outfile = new File(this.getFilesDir().getAbsolutePath(), fileName);
-                    out = new FileOutputStream(outfile);
-                    copyFile(in, out);
-                } catch (IOException e) {
-                    Log.e("AssetsError", "Failed to copy asset file: " + fileName, e);
-                } finally {
-                    if (in != null) {
-                        try {
-                            in.close();
-                        } catch (IOException e) {
-                            Log.e("AssetsError", "Failed to close inputstream", e);
+                if (fileName.compareTo("eng.traineddata") == 0) {
+                    InputStream in = null;
+                    OutputStream out = null;
+                    try {
+                        in = assetManager.open(fileName);
+                        File tessDir = new File(this.getFilesDir().getAbsolutePath() + "/tessdata/");
+                        if (!tessDir.exists()) {
+                            tessDir.mkdirs();
                         }
-                    }
-                    if (out != null) {
-                        try {
-                            out.close();
-                        } catch (IOException e) {
-                            Log.e("AssetsError", "Failed to close outputstream", e);
+                        File outfile = new File(this.getFilesDir().getAbsolutePath() + "/tessdata/", fileName);
+                        out = new FileOutputStream(outfile);
+                        copyFile(in, out);
+                    } catch (IOException e) {
+                        Log.e("AssetsError", "Failed to copy asset file: " + fileName, e);
+                    } finally {
+                        if (in != null) {
+                            try {
+                                in.close();
+                            } catch (IOException e) {
+                                Log.e("AssetsError", "Failed to close inputstream", e);
+                            }
+                        }
+                        if (out != null) {
+                            try {
+                                out.close();
+                            } catch (IOException e) {
+                                Log.e("AssetsError", "Failed to close outputstream", e);
+                            }
                         }
                     }
                 }
