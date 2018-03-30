@@ -130,6 +130,14 @@ public class ScannerActivity extends AppCompatActivity implements CameraBridgeVi
         return false;
     }
 
+    private boolean falsePos(Rect rect, Mat dispFrame) {
+        if(rect.height < (dispFrame.height() / 2) && rect.width < (dispFrame.width() / 2)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     public Mat findFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
         Mat dispFrame = inputFrame.rgba();
         // Convert the image to grey scale
@@ -137,7 +145,8 @@ public class ScannerActivity extends AppCompatActivity implements CameraBridgeVi
 
         // Use a bilateral filter to keep edges and remove noise
         Mat blurFrame = new Mat();
-//        Imgproc.GaussianBlur(greyFrame, blurFrame, new Size(5, 5), 5);
+        // GaussianBlur is faster but reduces accuracy
+        //Imgproc.GaussianBlur(greyFrame, blurFrame, new Size(5, 5), 5);
         Imgproc.bilateralFilter(greyFrame, blurFrame, 5, 200, 200);
 
         // Use canny edge detection to detect the edges
@@ -174,10 +183,12 @@ public class ScannerActivity extends AppCompatActivity implements CameraBridgeVi
 
             if (shapeArr.length >= 4) {
                 Rect rect = Imgproc.boundingRect(points);
+                if (falsePos(rect, dispFrame)) {
+                    break;
+                }
                 boolean sameRect = checkRect(rect);
                 if (sameRect) {
                     mSameFrameCounter += 1;
-                    Log.i("AKIRA-COUNTER", mSameFrameCounter + "");
                 } else {
                     mSameFrameCounter = 0;
                 }
@@ -211,7 +222,7 @@ public class ScannerActivity extends AppCompatActivity implements CameraBridgeVi
         return dispFrame;
     }
 
-    // TODO: Move this into a callback thread since it can hang the UI
+    // TODO: Move this into another thread since it can hang the UI
     private String storeImage(Bitmap image) {
         File file = new File(this.getFilesDir(), "temp.jpeg");
         try {
