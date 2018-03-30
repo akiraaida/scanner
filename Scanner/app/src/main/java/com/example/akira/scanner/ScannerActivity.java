@@ -7,10 +7,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.SurfaceView;
-import android.view.View;
 import android.view.WindowManager;
-
-import com.googlecode.tesseract.android.TessBaseAPI;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase;
@@ -224,7 +221,6 @@ public class ScannerActivity extends AppCompatActivity implements CameraBridgeVi
         return dispFrame;
     }
 
-    // TODO: Move this into another thread since it can hang the UI
     private String storeImage(Bitmap image) {
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         String millisInString  = dateFormat.format(new Date());

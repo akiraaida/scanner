@@ -41,6 +41,7 @@ public class DisplayActivity extends AppCompatActivity {
     private int mFalsePos = -1;
     private int mFalseCaptureHeight = -1;
     private int mFalseCaptureWidth = -1;
+    private Bitmap mImg = null;
     private String mImgPath = "";
 
     @Override
@@ -55,6 +56,14 @@ public class DisplayActivity extends AppCompatActivity {
         mTess.init(this.getFilesDir().getAbsolutePath(), "eng");
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        File file = new File(mImgPath);
+        file.delete();
+    }
+
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
         public void onManagerConnected(int status) {
@@ -62,9 +71,10 @@ public class DisplayActivity extends AppCompatActivity {
                 case LoaderCallbackInterface.SUCCESS:
                 {
                     Log.i("onManager", "OpenCV loaded successfully");
-                    mImgPath = DisplayActivity.this.getFilesDir().getAbsolutePath() + "/receipt.jpg";
-//                    Intent intent = getIntent();
-//                    String mImgPath = intent.getStringExtra("imgPath");
+                    // Testing code
+//                    mImgPath = DisplayActivity.this.getFilesDir().getAbsolutePath() + "/receipt.jpg";
+                    Intent intent = getIntent();
+                    String mImgPath = intent.getStringExtra("imgPath");
                     loadImageFromStorage(mImgPath);
                 } break;
                 default:
@@ -82,16 +92,15 @@ public class DisplayActivity extends AppCompatActivity {
         OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_0_0, this, mLoaderCallback);
     }
 
-    // TODO: Move this into a callback function
     private void loadImageFromStorage(String path) {
         try {
             File f = new File(path);
-            Bitmap b = BitmapFactory.decodeStream(new FileInputStream(f));
-            mHeightLen = (b.getHeight() / 100)*2;
-            mFalsePos = (b.getHeight() / 100);
-            mFalseCaptureHeight = (b.getHeight() / 100) * 50;
-            mFalseCaptureWidth = (b.getWidth() / 100) * 50;
-            processImg(b);
+            mImg = BitmapFactory.decodeStream(new FileInputStream(f));
+            mHeightLen = (mImg.getHeight() / 100)*2;
+            mFalsePos = (mImg.getHeight() / 100);
+            mFalseCaptureHeight = (mImg.getHeight() / 100) * 50;
+            mFalseCaptureWidth = (mImg.getWidth() / 100) * 50;
+            dispImage(mImg);
         }
         catch (FileNotFoundException e)
         {
@@ -190,15 +199,17 @@ public class DisplayActivity extends AppCompatActivity {
         dispImage(bmp);
         mTess.setImage(bmp);
         String text = mTess.getUTF8Text();
-        if (text.contains("$")) {
-            TextView textView = findViewById(R.id.dispText);
-            String currentText = textView.getText().toString();
-            if (!currentText.isEmpty()) {
-                currentText += "\n" + text;
-            } else {
-                currentText = text;
+        if (!text.isEmpty()) {
+            if (text.contains("$")) {
+                TextView textView = findViewById(R.id.dispText);
+                String currentText = textView.getText().toString();
+                if (!currentText.isEmpty()) {
+                    currentText += "\n" + text;
+                } else {
+                    currentText = text;
+                }
+                textView.setText(currentText);
             }
-            textView.setText(currentText);
         }
     }
 
@@ -214,5 +225,9 @@ public class DisplayActivity extends AppCompatActivity {
         Intent intent = new Intent(DisplayActivity.this, ScannerActivity.class);
         startActivity(intent);
         finish();
+    }
+
+    public void onDetect(View view) {
+        processImg(mImg);
     }
 }

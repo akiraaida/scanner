@@ -1,17 +1,14 @@
 package com.example.akira.scanner;
 
 import android.Manifest;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
-import android.icu.util.Output;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.Display;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -39,7 +36,7 @@ public class LandingActivity extends AppCompatActivity {
             ActivityCompat.requestPermissions(this,
                     new String[]{Manifest.permission.CAMERA}, REQUEST_CAMERA_CODE);
         } else {
-            Intent scannerIntent = new Intent(LandingActivity.this, DisplayActivity.class);
+            Intent scannerIntent = new Intent(LandingActivity.this, ScannerActivity.class);
             startActivity(scannerIntent);
             finish();
         }
@@ -114,7 +111,7 @@ public class LandingActivity extends AppCompatActivity {
             case REQUEST_CAMERA_CODE: {
                 if (grantResults.length > 0
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    Intent scannerIntent = new Intent(LandingActivity.this, DisplayActivity.class);
+                    Intent scannerIntent = new Intent(LandingActivity.this, ScannerActivity.class);
                     startActivity(scannerIntent);
                     finish();
                 } else {
