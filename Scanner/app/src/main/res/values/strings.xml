@@ -3,4 +3,7 @@
     <string name="saveBtn">Save</string>
     <string name="deleteBtn">Delete</string>
     <string name="detectBtn">Detect</string>
+    <string name="left"><![CDATA[<]]></string>
+    <string name="right"><![CDATA[>]]></string>
+    <string name="home">Home</string>
 </resources>

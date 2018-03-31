@@ -29,6 +29,11 @@ public class LandingActivity extends AppCompatActivity {
             copyAssets();
         }
 
+        File filesDir = new File(this.getFilesDir().getAbsolutePath() + "/pics/");
+        if(!filesDir.exists()) {
+            filesDir.mkdirs();
+        }
+
         if (ContextCompat.checkSelfPermission(this,
             Manifest.permission.CAMERA)
             != PackageManager.PERMISSION_GRANTED) {

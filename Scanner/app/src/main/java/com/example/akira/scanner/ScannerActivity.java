@@ -37,8 +37,8 @@ import java.util.List;
 public class ScannerActivity extends AppCompatActivity implements CameraBridgeViewBase.CvCameraViewListener2, Menu.OnFragmentInteractionListener {
 
     private CameraBridgeViewBase mOpenCvCameraView;
-    private static int mSameFrameCounter = 0;
-    private static Rect mSavedRect = null;
+    public static int mSameFrameCounter = 0;
+    public static Rect mSavedRect = null;
 
     // Low Hysteresis (eliminates non meaningful edges)
     private static final int LOW_HYSTERESIS = 25;
@@ -57,6 +57,7 @@ public class ScannerActivity extends AppCompatActivity implements CameraBridgeVi
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setContentView(R.layout.activity_scanner);
+        mToggle = 0;
 
         mOpenCvCameraView = findViewById(R.id.cvView);
         mOpenCvCameraView.setVisibility(SurfaceView.VISIBLE);
@@ -223,9 +224,9 @@ public class ScannerActivity extends AppCompatActivity implements CameraBridgeVi
     }
 
     private String storeImage(Bitmap image) {
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd-HH:mm:ss");
         String millisInString  = dateFormat.format(new Date());
-        File file = new File(this.getFilesDir(), millisInString + ".jpeg");
+        File file = new File(this.getFilesDir() + "/pics/", millisInString + ".jpeg");
         try {
             FileOutputStream fos = new FileOutputStream(file);
             image.compress(Bitmap.CompressFormat.PNG, 90, fos);

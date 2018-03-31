@@ -74,7 +74,7 @@ public class DisplayActivity extends AppCompatActivity {
                     // Testing code
 //                    mImgPath = DisplayActivity.this.getFilesDir().getAbsolutePath() + "/receipt.jpg";
                     Intent intent = getIntent();
-                    String mImgPath = intent.getStringExtra("imgPath");
+                    mImgPath = intent.getStringExtra("imgPath");
                     loadImageFromStorage(mImgPath);
                 } break;
                 default:
@@ -221,7 +221,9 @@ public class DisplayActivity extends AppCompatActivity {
 
     public void onDelete(View view) {
         File file = new File(mImgPath);
-        file.delete();
+        Log.i("AKIRA_TEST", file.getAbsolutePath());
+        boolean test = file.delete();
+        Log.i("AKIRA_TEST", test + "");
         Intent intent = new Intent(DisplayActivity.this, ScannerActivity.class);
         startActivity(intent);
         finish();

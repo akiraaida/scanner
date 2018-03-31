@@ -78,9 +78,13 @@ public class Menu extends Fragment {
                 if (color == getResources().getColor(android.R.color.holo_green_dark)) {
                     playButton.setBackgroundColor(getResources().getColor(android.R.color.holo_red_dark));
                     ScannerActivity.mToggle = 0;
+                    ScannerActivity.mSameFrameCounter = 0;
+                    ScannerActivity.mSavedRect = null;
                 } else {
                     playButton.setBackgroundColor(getResources().getColor(android.R.color.holo_green_dark));
                     ScannerActivity.mToggle = 1;
+                    ScannerActivity.mSameFrameCounter = 0;
+                    ScannerActivity.mSavedRect = null;
                 }
             }
         });
