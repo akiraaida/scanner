@@ -41,7 +41,7 @@ public class ScannerActivity extends AppCompatActivity implements CameraBridgeVi
     public static Rect mSavedRect = null;
 
     // Low Hysteresis (eliminates non meaningful edges)
-    private static final int LOW_HYSTERESIS = 25;
+    private static final int LOW_HYSTERESIS = 0;
     // High Hysteresis (determines definitive edges)
     private static final int HIGH_HYSTERESIS = 80;
     // First tier is a "red" box to show what is in focus
@@ -122,8 +122,8 @@ public class ScannerActivity extends AppCompatActivity implements CameraBridgeVi
         double yDiff = Math.abs(p1.y - p2.y);
 
         // 5% tolerance on the shift of x/y from previous frames
-        double xTol = p2.x * 0.05;
-        double yTol = p2.y * 0.05;
+        double xTol = p2.x * 0.1;
+        double yTol = p2.y * 0.1;
 
         if (xDiff <= xTol && yDiff <= yTol) {
             return true;

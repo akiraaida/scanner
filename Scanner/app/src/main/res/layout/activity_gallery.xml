@@ -15,7 +15,7 @@
             android:id="@+id/galleryView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight=".95" />
+            android:layout_weight=".9" />
 
         <LinearLayout
             android:layout_width="match_parent"

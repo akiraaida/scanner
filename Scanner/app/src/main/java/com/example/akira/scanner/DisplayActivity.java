@@ -1,5 +1,6 @@
 package com.example.akira.scanner;
 
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -8,6 +9,7 @@ import android.os.Bundle;
 import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.View;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -22,13 +24,14 @@ import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
 import org.opencv.core.Point;
 import org.opencv.core.Rect;
-import org.opencv.core.Scalar;
-import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -125,7 +128,7 @@ public class DisplayActivity extends AppCompatActivity {
         return mat;
     }
 
-    private void processImg(Bitmap bmp) {
+    private String processImg(Bitmap bmp) {
         // Convert the Bitmap object to a Mat object to use for CV.
         Mat mat = convertBitmap(bmp);
         Mat origMat = new Mat();
@@ -138,21 +141,28 @@ public class DisplayActivity extends AppCompatActivity {
         Imgproc.threshold(mat, mask, 100, 255, Imgproc.THRESH_BINARY_INV);
         // Grow the mask's response by dilating it to determine where the text is later on.
         // Use the cross kernel which will increase the response in both the x and y direction.
-        Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_CROSS, new Size(3, 3));
-        Mat dilated = new Mat();
-        Imgproc.dilate(mask, dilated, kernel, new Point(-1, -1), 7);
-        Mat temp = new Mat();
-        dilated.copyTo(temp);
+//        Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_CROSS, new Size(3, 3));
+//        Mat dilated = new Mat();
+//        Imgproc.dilate(mask, dilated, kernel, new Point(-1, -1), 5);
+//        Mat temp = new Mat();
+//        dilated.copyTo(temp);
         List<MatOfPoint> contours = new ArrayList<>();
-        Imgproc.findContours(temp, contours, new Mat(), Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_NONE);
+        Imgproc.findContours(mask, contours, new Mat(), Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_NONE);
         List<Rect> boundingBoxes = filterContours(contours);
+        String allPrices = "";
         for (Rect rect : boundingBoxes) {
-            Imgproc.rectangle(origMat, new Point(rect.x, rect.y), new Point(rect.x + rect.width, rect.y + rect.height), new Scalar(255, 0, 0, 255), 2);
+//            Imgproc.rectangle(origMat, new Point(rect.x, rect.y), new Point(rect.x + rect.width, rect.y + rect.height), new Scalar(255, 0, 0, 255), 2);
             Mat text = new Mat(origMat, rect);
-            detectText(text);
+            String prices = detectText(text);
+            if (!prices.isEmpty()) {
+                if (allPrices.isEmpty()) {
+                    allPrices += prices;
+                } else {
+                    allPrices += "\n" + prices;
+                }
+            }
         }
-        Bitmap orig = convertMat(origMat);
-        dispImage(orig);
+        return allPrices;
     }
 
     private List<Rect> filterContours(List<MatOfPoint> contours) {
@@ -194,23 +204,18 @@ public class DisplayActivity extends AppCompatActivity {
         return boundingBoxes;
     }
 
-    private void detectText(Mat mat) {
+    private String detectText(Mat mat) {
         Bitmap bmp = convertMat(mat);
-        dispImage(bmp);
         mTess.setImage(bmp);
         String text = mTess.getUTF8Text();
         if (!text.isEmpty()) {
             if (text.contains("$")) {
-                TextView textView = findViewById(R.id.dispText);
-                String currentText = textView.getText().toString();
-                if (!currentText.isEmpty()) {
-                    currentText += "\n" + text;
-                } else {
-                    currentText = text;
+                if (text.matches(".*\\d+.*") && text.contains(".")) {
+                    return text;
                 }
-                textView.setText(currentText);
             }
         }
+        return "";
     }
 
     public void onSave(View view) {
@@ -221,15 +226,17 @@ public class DisplayActivity extends AppCompatActivity {
 
     public void onDelete(View view) {
         File file = new File(mImgPath);
-        Log.i("AKIRA_TEST", file.getAbsolutePath());
-        boolean test = file.delete();
-        Log.i("AKIRA_TEST", test + "");
+        file.delete();
         Intent intent = new Intent(DisplayActivity.this, ScannerActivity.class);
         startActivity(intent);
         finish();
     }
 
     public void onDetect(View view) {
-        processImg(mImg);
+        Button detectBtn = findViewById(R.id.detectText);
+        detectBtn.setEnabled(false);
+        String prices = processImg(mImg);
+        TextView dispText = findViewById(R.id.dispText);
+        dispText.setText(prices);
     }
 }
