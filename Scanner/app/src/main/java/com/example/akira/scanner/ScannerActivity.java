@@ -43,7 +43,7 @@ public class ScannerActivity extends AppCompatActivity implements CameraBridgeVi
     // Low Hysteresis (eliminates non meaningful edges)
     private static final int LOW_HYSTERESIS = 0;
     // High Hysteresis (determines definitive edges)
-    private static final int HIGH_HYSTERESIS = 80;
+    private static final int HIGH_HYSTERESIS = 50;
     // First tier is a "red" box to show what is in focus
     private static final int FOCUS_COUNTER_LEVEL_1 = 3;
     // Second tier is a "green" box to show what is focus and that it has been in focus for x30 frames, once this number is exceeded a picture will be taken
