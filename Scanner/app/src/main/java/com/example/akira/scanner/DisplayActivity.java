@@ -152,7 +152,7 @@ public class DisplayActivity extends AppCompatActivity {
         mPossibleText = boundingBoxes.size();
         for (Rect rect : boundingBoxes) {
 //            Imgproc.rectangle(origMat, new Point(rect.x, rect.y), new Point(rect.x + rect.width, rect.y + rect.height), new Scalar(255, 0, 0, 255), 2);
-            Mat text = new Mat(origMat, rect);
+            Mat text = new Mat(mat, rect);
             new Thread(new Runnable() {
                 @Override
                 public void run() {
