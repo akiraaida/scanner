@@ -1,6 +1,5 @@
 package com.example.akira.scanner;
 
-import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -24,6 +23,8 @@ import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
 import org.opencv.core.Point;
 import org.opencv.core.Rect;
+import org.opencv.core.Scalar;
+import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
 import java.io.File;
@@ -38,9 +39,11 @@ public class DisplayActivity extends AppCompatActivity {
 
     private TessBaseAPI mTess = null;
     private int mHeightLen = -1;
+    private int mFalseCaptureHeightSm = -1;
+    private int mFalseCaptureWidthSm = -1;
+    private int mFalseCaptureHeightLg = -1;
+    private int mFalseCaptureWidthLg = -1;
     private int mFalsePos = -1;
-    private int mFalseCaptureHeight = -1;
-    private int mFalseCaptureWidth = -1;
     private Bitmap mImg = null;
     private String mImgPath = "";
     private String mText = "";
@@ -74,11 +77,11 @@ public class DisplayActivity extends AppCompatActivity {
                 case LoaderCallbackInterface.SUCCESS:
                 {
                     Log.i("onManager", "OpenCV loaded successfully");
-                    // Testing code
-//                    mImgPath = DisplayActivity.this.getFilesDir().getAbsolutePath() + "/receipt.jpg";
                     Intent intent = getIntent();
                     mImgPath = intent.getStringExtra("imgPath");
+                    Log.d("AKIRA_SAVING_IMAGE8", "SAVING_IMAGE8");
                     loadImageFromStorage(mImgPath);
+                    Log.d("AKIRA_SAVING_IMAGE9", "SAVING_IMAGE9");
                 } break;
                 default:
                 {
@@ -100,9 +103,11 @@ public class DisplayActivity extends AppCompatActivity {
             File f = new File(path);
             mImg = BitmapFactory.decodeStream(new FileInputStream(f));
             mHeightLen = (mImg.getHeight() / 100)*2;
-            mFalsePos = (mImg.getHeight() / 100);
-            mFalseCaptureHeight = (mImg.getHeight() / 100) * 50;
-            mFalseCaptureWidth = (mImg.getWidth() / 100) * 50;
+            mFalseCaptureHeightSm = (mImg.getHeight() / 100) * 1;
+            mFalseCaptureWidthSm = (mImg.getWidth() / 100) * 1;
+            mFalseCaptureHeightLg = (mImg.getHeight() / 100) * 10;
+            mFalseCaptureWidthLg = (mImg.getWidth() / 100) * 50;
+            mFalsePos = (mImg.getHeight() / 100) * 2;
             dispImage(mImg);
         }
         catch (FileNotFoundException e)
@@ -135,24 +140,22 @@ public class DisplayActivity extends AppCompatActivity {
         mat.copyTo(origMat);
         // Convert the Mat object from BGR color code to gray scale.
         Imgproc.cvtColor(mat, mat, Imgproc.COLOR_BGR2GRAY);
-        // Create an inverse color threshold from 180-255 on the original image to create a mask.
-        // Since it's inverse, the colors kept will be the blacks from 0-75 (the text color).
         Mat mask = new Mat();
         Imgproc.threshold(mat, mask, 100, 255, Imgproc.THRESH_BINARY_INV);
         // Grow the mask's response by dilating it to determine where the text is later on.
         // Use the cross kernel which will increase the response in both the x and y direction.
-//        Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_CROSS, new Size(3, 3));
-//        Mat dilated = new Mat();
-//        Imgproc.dilate(mask, dilated, kernel, new Point(-1, -1), 5);
-//        Mat temp = new Mat();
-//        dilated.copyTo(temp);
+        Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_CROSS, new Size(3, 3));
+        Mat dilated = new Mat();
+        Imgproc.dilate(mask.clone(), dilated, kernel, new Point(-1, -1), 2);
+        Mat temp = new Mat();
+        dilated.copyTo(temp);
         List<MatOfPoint> contours = new ArrayList<>();
-        Imgproc.findContours(mask, contours, new Mat(), Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_NONE);
-        List<Rect> boundingBoxes = filterContours(contours);
+        Imgproc.findContours(temp.clone(), contours, new Mat(), Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_NONE);
+        List<Rect> boundingBoxes = filterContours(contours, origMat);
         mPossibleText = boundingBoxes.size();
         for (Rect rect : boundingBoxes) {
-//            Imgproc.rectangle(origMat, new Point(rect.x, rect.y), new Point(rect.x + rect.width, rect.y + rect.height), new Scalar(255, 0, 0, 255), 2);
-            Mat text = new Mat(mat, rect);
+            Imgproc.rectangle(origMat, new Point(rect.x, rect.y), new Point(rect.x + rect.width, rect.y + rect.height), new Scalar(255, 0, 0, 255), 2);
+            Mat text = new Mat(origMat, rect);
             new Thread(new Runnable() {
                 @Override
                 public void run() {
@@ -160,15 +163,20 @@ public class DisplayActivity extends AppCompatActivity {
                 }
             }).start();
         }
+        dispImage(convertMat(origMat));
     }
 
-    private List<Rect> filterContours(List<MatOfPoint> contours) {
+    private List<Rect> filterContours(List<MatOfPoint> contours, Mat img) {
         // Get the bounding box for each contour
         List<Rect> rects = contours.stream().map(contour -> Imgproc.boundingRect(contour)).collect(Collectors.toList());
         // Remove all small boxes that are false positives
-        rects.removeIf(rect -> rect.height < mFalsePos && rect.width < mFalsePos);
+        rects.removeIf(rect -> rect.height < mFalseCaptureHeightSm);
+        rects.removeIf(rect -> rect.width < mFalseCaptureWidthSm);
+        rects.removeIf(rect -> rect.height < mFalseCaptureHeightSm*2 && rect.width < mFalseCaptureWidthSm*5);
         // Remove the large false positives
-        rects.removeIf(rect -> (rect.height > mFalseCaptureHeight && rect.width > mFalseCaptureWidth));
+        rects.removeIf(rect -> (rect.height > mFalseCaptureHeightLg && rect.width > mFalseCaptureWidthLg));
+        // Remove the tall false positives
+        rects.removeIf(rect -> (rect.height > mFalseCaptureHeightLg));
         List<List<Rect>> sim = new ArrayList<>();
         while (rects.size() > 0) {
             Rect rect = rects.get(0);
@@ -196,6 +204,29 @@ public class DisplayActivity extends AppCompatActivity {
                     br = new Point(br.x, rect.y + rect.height);
                 }
             }
+            Rect tempRect = new Rect(tl, br);
+            int widthMargin = (int) (tempRect.width * 0.01);
+            int heightMargin = (int) (tempRect.height * 0.12);
+            int smallX = (int) tl.x - widthMargin;
+            int smallY = (int) tl.y - heightMargin;
+            int bigX = (int) br.x + widthMargin;
+            int bigY = (int) br.y + heightMargin;
+
+            if (smallX < 0) {
+                smallX = 0;
+            }
+            if (smallY < 0) {
+                smallY = 0;
+            }
+            if (bigX > img.width()) {
+                bigX = img.width();
+            }
+            if (bigY > img.height()) {
+                bigY = img.height();
+            }
+
+            tl = new Point(smallX, smallY);
+            br = new Point(bigX, bigY);
             boundingBoxes.add(new Rect(tl, br));
         }
         return boundingBoxes;
@@ -217,10 +248,15 @@ public class DisplayActivity extends AppCompatActivity {
                 }
             }
         }
-        Log.i("TEST", mCounter + ", " + mPossibleText);
         if (mCounter == mPossibleText) {
             TextView dispText = findViewById(R.id.dispText);
-            dispText.setText(mText);
+            Button detectBtn = findViewById(R.id.detectText);
+            detectBtn.setTextColor(getResources().getColor(android.R.color.holo_green_dark));
+            if (mText.isEmpty()) {
+                dispText.setText("No prices found.");
+            } else {
+                dispText.setText(mText);
+            }
         }
     }
 
@@ -241,6 +277,7 @@ public class DisplayActivity extends AppCompatActivity {
     public void onDetect(View view) {
         Button detectBtn = findViewById(R.id.detectText);
         detectBtn.setEnabled(false);
+        detectBtn.setTextColor(getResources().getColor(android.R.color.holo_red_dark));
         processImg(mImg);
     }
 }

@@ -42,9 +42,9 @@ public class ScannerActivity extends AppCompatActivity implements CameraBridgeVi
     public static Rect mSavedRect = null;
 
     // Low Hysteresis (eliminates non meaningful edges)
-    private static final int LOW_HYSTERESIS = 80;
+    private static final int LOW_HYSTERESIS = 30;
     // High Hysteresis (determines definitive edges)
-    private static final int HIGH_HYSTERESIS = 120;
+    private static final int HIGH_HYSTERESIS = 60;
     // First tier is a "red" box to show what is in focus
     private static final int FOCUS_COUNTER_LEVEL_1 = 5;
     // Second tier is a "green" box to show what is focus and that it has been in focus for x30 frames, once this number is exceeded a picture will be taken
@@ -157,13 +157,11 @@ public class ScannerActivity extends AppCompatActivity implements CameraBridgeVi
 
         Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_CROSS, new Size(3, 3));
         Mat dilated = new Mat();
-        Imgproc.dilate(edgeFrame, dilated, kernel, new Point(-1, -1), 3);
-        Mat temp = new Mat();
-        dilated.copyTo(temp);
+        Imgproc.dilate(edgeFrame, dilated, kernel, new Point(-1, -1), 5);
 
         // Find the contours within the image using the edges found by canny
         List<MatOfPoint> contours = new ArrayList<>();
-        Imgproc.findContours(temp, contours, new Mat(), Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_NONE);
+        Imgproc.findContours(dilated.clone(), contours, new Mat(), Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_NONE);
 
         // Sort the contours based on area (largest area is likely to be our expected frame)
         contours.sort(new Comparator<MatOfPoint>() {
@@ -205,23 +203,30 @@ public class ScannerActivity extends AppCompatActivity implements CameraBridgeVi
                 } else if (mSameFrameCounter < FOCUS_COUNTER_LEVEL_2) {
                     Imgproc.rectangle(dispFrame, new Point(rect.x, rect.y), new Point(rect.x + rect.width, rect.y + rect.height), new Scalar(0, 255, 0), 3);
                 } else {
+                    Log.d("AKIRA_SAVING_IMAGE1", "SAVING_IMAGE1");
                     // Get the region of interest
                     Point tl = new Point(rect.x, rect.y);
                     Point br = new Point(rect.x + rect.width, rect.y + rect.height);
                     Rect roi = new Rect(tl, br);
                     // Crop the frame to just the region of interest
+                    Log.d("AKIRA_SAVING_IMAGE2", "SAVING_IMAGE2");
                     dispFrame = new Mat(dispFrame, roi);
                     // Rotate the frame since the camera is in landscape mode
                     Core.flip(dispFrame.t(), dispFrame, 1);
+                    Log.d("AKIRA_SAVING_IMAGE3", "SAVING_IMAGE3");
                     // Convert the frame to an image
-                    Bitmap img = Bitmap.createBitmap(dispFrame.cols(), dispFrame.rows(),Bitmap.Config.ARGB_8888);
+                    Bitmap img = Bitmap.createBitmap(dispFrame.width(), dispFrame.height(),Bitmap.Config.ARGB_8888);
+                    Log.d("AKIRA_SAVING_IMAGE4", "SAVING_IMAGE4");
                     Utils.matToBitmap(dispFrame, img);
+                    Log.d("AKIRA_SAVING_IMAGE5", "SAVING_IMAGE5");
                     // Save the image locally
                     String path = storeImage(img);
+                    Log.d("AKIRA_SAVING_IMAGE6", "SAVING_IMAGE6");
                     // Send the path to the display activity
                     Intent intent = new Intent(ScannerActivity.this, DisplayActivity.class);
                     intent.putExtra("imgPath", path);
                     startActivity(intent);
+                    Log.d("AKIRA_SAVING_IMAGE7", "SAVING_IMAGE7");
                     finish();
                 }
                 break;
