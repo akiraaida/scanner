@@ -29,9 +29,6 @@ import org.opencv.imgproc.Imgproc;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -46,6 +43,9 @@ public class DisplayActivity extends AppCompatActivity {
     private int mFalseCaptureWidth = -1;
     private Bitmap mImg = null;
     private String mImgPath = "";
+    private String mText = "";
+    private int mPossibleText = -1;
+    private int mCounter = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -128,7 +128,7 @@ public class DisplayActivity extends AppCompatActivity {
         return mat;
     }
 
-    private String processImg(Bitmap bmp) {
+    private void processImg(Bitmap bmp) {
         // Convert the Bitmap object to a Mat object to use for CV.
         Mat mat = convertBitmap(bmp);
         Mat origMat = new Mat();
@@ -149,20 +149,17 @@ public class DisplayActivity extends AppCompatActivity {
         List<MatOfPoint> contours = new ArrayList<>();
         Imgproc.findContours(mask, contours, new Mat(), Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_NONE);
         List<Rect> boundingBoxes = filterContours(contours);
-        String allPrices = "";
+        mPossibleText = boundingBoxes.size();
         for (Rect rect : boundingBoxes) {
 //            Imgproc.rectangle(origMat, new Point(rect.x, rect.y), new Point(rect.x + rect.width, rect.y + rect.height), new Scalar(255, 0, 0, 255), 2);
             Mat text = new Mat(origMat, rect);
-            String prices = detectText(text);
-            if (!prices.isEmpty()) {
-                if (allPrices.isEmpty()) {
-                    allPrices += prices;
-                } else {
-                    allPrices += "\n" + prices;
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    detectText(text);
                 }
-            }
+            }).start();
         }
-        return allPrices;
     }
 
     private List<Rect> filterContours(List<MatOfPoint> contours) {
@@ -204,18 +201,27 @@ public class DisplayActivity extends AppCompatActivity {
         return boundingBoxes;
     }
 
-    private String detectText(Mat mat) {
+    private synchronized void detectText(Mat mat) {
+        mCounter += 1;
         Bitmap bmp = convertMat(mat);
         mTess.setImage(bmp);
         String text = mTess.getUTF8Text();
         if (!text.isEmpty()) {
             if (text.contains("$")) {
                 if (text.matches(".*\\d+.*") && text.contains(".")) {
-                    return text;
+                    if (mText.isEmpty()) {
+                        mText = text;
+                    } else {
+                        mText += "\n" + text;
+                    }
                 }
             }
         }
-        return "";
+        Log.i("TEST", mCounter + ", " + mPossibleText);
+        if (mCounter == mPossibleText) {
+            TextView dispText = findViewById(R.id.dispText);
+            dispText.setText(mText);
+        }
     }
 
     public void onSave(View view) {
@@ -235,8 +241,6 @@ public class DisplayActivity extends AppCompatActivity {
     public void onDetect(View view) {
         Button detectBtn = findViewById(R.id.detectText);
         detectBtn.setEnabled(false);
-        String prices = processImg(mImg);
-        TextView dispText = findViewById(R.id.dispText);
-        dispText.setText(prices);
+        processImg(mImg);
     }
 }

@@ -22,6 +22,7 @@ import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.Point;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
+import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
 import java.io.File;
@@ -41,13 +42,13 @@ public class ScannerActivity extends AppCompatActivity implements CameraBridgeVi
     public static Rect mSavedRect = null;
 
     // Low Hysteresis (eliminates non meaningful edges)
-    private static final int LOW_HYSTERESIS = 0;
+    private static final int LOW_HYSTERESIS = 80;
     // High Hysteresis (determines definitive edges)
-    private static final int HIGH_HYSTERESIS = 50;
+    private static final int HIGH_HYSTERESIS = 120;
     // First tier is a "red" box to show what is in focus
-    private static final int FOCUS_COUNTER_LEVEL_1 = 3;
+    private static final int FOCUS_COUNTER_LEVEL_1 = 5;
     // Second tier is a "green" box to show what is focus and that it has been in focus for x30 frames, once this number is exceeded a picture will be taken
-    private static final int FOCUS_COUNTER_LEVEL_2 = 5;
+    private static final int FOCUS_COUNTER_LEVEL_2 = 10;
     // Toggle the detection on or off
     public static int mToggle = 0;
 
@@ -147,16 +148,22 @@ public class ScannerActivity extends AppCompatActivity implements CameraBridgeVi
         // Use a bilateral filter to keep edges and remove noise
         Mat blurFrame = new Mat();
         // GaussianBlur is faster but reduces accuracy
-        //Imgproc.GaussianBlur(greyFrame, blurFrame, new Size(5, 5), 5);
-        Imgproc.bilateralFilter(greyFrame, blurFrame, 5, 200, 200);
+        Imgproc.GaussianBlur(greyFrame, blurFrame, new Size(5, 5), 10);
+//        Imgproc.bilateralFilter(greyFrame, blurFrame, 5, 200, 200);
 
         // Use canny edge detection to detect the edges
         Mat edgeFrame = new Mat();
         Imgproc.Canny(blurFrame, edgeFrame, LOW_HYSTERESIS, HIGH_HYSTERESIS);
 
+        Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_CROSS, new Size(3, 3));
+        Mat dilated = new Mat();
+        Imgproc.dilate(edgeFrame, dilated, kernel, new Point(-1, -1), 3);
+        Mat temp = new Mat();
+        dilated.copyTo(temp);
+
         // Find the contours within the image using the edges found by canny
         List<MatOfPoint> contours = new ArrayList<>();
-        Imgproc.findContours(edgeFrame, contours, new Mat(), Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_NONE);
+        Imgproc.findContours(temp, contours, new Mat(), Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_NONE);
 
         // Sort the contours based on area (largest area is likely to be our expected frame)
         contours.sort(new Comparator<MatOfPoint>() {
