@@ -152,7 +152,6 @@ public class DisplayActivity extends AppCompatActivity {
         List<Rect> boundingBoxes = filterContours(contours, origMat);
         mPossibleText = boundingBoxes.size();
         for (Rect rect : boundingBoxes) {
-            Imgproc.rectangle(origMat, new Point(rect.x, rect.y), new Point(rect.x + rect.width, rect.y + rect.height), new Scalar(255, 0, 0, 255), 2);
             Mat text = new Mat(origMat, rect);
             new Thread(new Runnable() {
                 @Override
@@ -161,7 +160,6 @@ public class DisplayActivity extends AppCompatActivity {
                 }
             }).start();
         }
-        dispImage(convertMat(origMat));
     }
 
     private List<Rect> filterContours(List<MatOfPoint> contours, Mat img) {
@@ -255,6 +253,8 @@ public class DisplayActivity extends AppCompatActivity {
     }
 
     public void onSave(View view) {
+        EditText editText = findViewById(R.id.dispText);
+        mText = editText.getText().toString();
         writeFile();
         Intent intent = new Intent(DisplayActivity.this, ScannerActivity.class);
         startActivity(intent);
@@ -273,7 +273,7 @@ public class DisplayActivity extends AppCompatActivity {
         try{
             File file = new File(this.getFilesDir().getAbsolutePath(), "notes.txt");
             FileWriter writer = new FileWriter(file, true);
-            writer.append(mImgPath + "~,~\n" + mText);
+            writer.append("\n" + mImgPath + "~,~\n" + mText);
             writer.flush();
             writer.close();
         } catch (IOException e) {

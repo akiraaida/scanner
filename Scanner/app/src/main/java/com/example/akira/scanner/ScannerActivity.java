@@ -48,7 +48,7 @@ public class ScannerActivity extends AppCompatActivity implements CameraBridgeVi
     // First tier is a "red" box to show what is in focus
     private static final int FOCUS_COUNTER_LEVEL_1 = 5;
     // Second tier is a "green" box to show what is focus and that it has been in focus for x30 frames, once this number is exceeded a picture will be taken
-    private static final int FOCUS_COUNTER_LEVEL_2 = 10;
+    private static final int FOCUS_COUNTER_LEVEL_2 = 8;
     // Toggle the detection on or off
     public static int mToggle = 0;
 
@@ -148,7 +148,7 @@ public class ScannerActivity extends AppCompatActivity implements CameraBridgeVi
         // Use a bilateral filter to keep edges and remove noise
         Mat blurFrame = new Mat();
         // GaussianBlur is faster but reduces accuracy
-        Imgproc.GaussianBlur(greyFrame, blurFrame, new Size(5, 5), 10);
+        Imgproc.GaussianBlur(greyFrame, blurFrame, new Size(5, 5), 7);
 //        Imgproc.bilateralFilter(greyFrame, blurFrame, 5, 200, 200);
 
         // Use canny edge detection to detect the edges
@@ -203,30 +203,24 @@ public class ScannerActivity extends AppCompatActivity implements CameraBridgeVi
                 } else if (mSameFrameCounter < FOCUS_COUNTER_LEVEL_2) {
                     Imgproc.rectangle(dispFrame, new Point(rect.x, rect.y), new Point(rect.x + rect.width, rect.y + rect.height), new Scalar(0, 255, 0), 3);
                 } else {
-                    Log.d("AKIRA_SAVING_IMAGE1", "SAVING_IMAGE1");
                     // Get the region of interest
                     Point tl = new Point(rect.x, rect.y);
                     Point br = new Point(rect.x + rect.width, rect.y + rect.height);
                     Rect roi = new Rect(tl, br);
                     // Crop the frame to just the region of interest
-                    Log.d("AKIRA_SAVING_IMAGE2", "SAVING_IMAGE2");
-                    dispFrame = new Mat(dispFrame, roi);
+                    Mat tempMat = new Mat();
+                    tempMat = new Mat(dispFrame, roi);
                     // Rotate the frame since the camera is in landscape mode
-                    Core.flip(dispFrame.t(), dispFrame, 1);
-                    Log.d("AKIRA_SAVING_IMAGE3", "SAVING_IMAGE3");
+                    Core.flip(tempMat.t(), tempMat, 1);
                     // Convert the frame to an image
-                    Bitmap img = Bitmap.createBitmap(dispFrame.width(), dispFrame.height(),Bitmap.Config.ARGB_8888);
-                    Log.d("AKIRA_SAVING_IMAGE4", "SAVING_IMAGE4");
-                    Utils.matToBitmap(dispFrame, img);
-                    Log.d("AKIRA_SAVING_IMAGE5", "SAVING_IMAGE5");
+                    Bitmap img = Bitmap.createBitmap(tempMat.width(), tempMat.height(),Bitmap.Config.ARGB_8888);
+                    Utils.matToBitmap(tempMat, img);
                     // Save the image locally
                     String path = storeImage(img);
-                    Log.d("AKIRA_SAVING_IMAGE6", "SAVING_IMAGE6");
                     // Send the path to the display activity
                     Intent intent = new Intent(ScannerActivity.this, DisplayActivity.class);
                     intent.putExtra("imgPath", path);
                     startActivity(intent);
-                    Log.d("AKIRA_SAVING_IMAGE7", "SAVING_IMAGE7");
                     finish();
                 }
                 break;

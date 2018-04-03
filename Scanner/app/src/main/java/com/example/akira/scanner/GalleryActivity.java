@@ -42,15 +42,17 @@ public class GalleryActivity extends AppCompatActivity {
             String fileName = "";
 
             while ((line = br.readLine()) != null) {
-                if (line.contains("~,~")) {
-                    if (!data.toString().isEmpty()) {
-                        mNotes.put(fileName, data.toString());
-                        data = new StringBuilder();
+                if (line.compareTo("") != 0) {
+                    if (line.contains("~,~")) {
+                        if (!data.toString().isEmpty()) {
+                            mNotes.put(fileName, data.toString());
+                            data = new StringBuilder();
+                        }
+                        fileName = line.replace("~,~", "");
+                    } else {
+                        data.append(line);
+                        data.append("\n");
                     }
-                    fileName = line.replace("~,~", "");
-                } else {
-                    data.append(line);
-                    data.append("\n");
                 }
             }
             mNotes.put(fileName, data.toString());
@@ -128,8 +130,10 @@ public class GalleryActivity extends AppCompatActivity {
         EditText editText = findViewById(R.id.notes);
         mNotes.put(key, editText.getText().toString());
         clearFile();
+        boolean first = true;
         for (Map.Entry<String, String> entry : mNotes.entrySet()) {
-            writeFile(entry.getKey(), entry.getValue());
+            writeFile(entry.getKey(), entry.getValue(), first);
+            first = false;
         }
     }
 
@@ -144,11 +148,15 @@ public class GalleryActivity extends AppCompatActivity {
         }
     }
 
-    public void writeFile(String fileName, String text){
+    public void writeFile(String fileName, String text, boolean first){
         try{
             File file = new File(this.getFilesDir().getAbsolutePath(), "notes.txt");
             FileWriter writer = new FileWriter(file, true);
-            writer.append(fileName + "~,~\n" + text + "\n");
+            if (first) {
+                writer.append(fileName + "~,~\n" + text);
+            } else {
+                writer.append("\n" + fileName + "~,~\n" + text);
+            }
             writer.flush();
             writer.close();
         } catch (IOException e) {
@@ -172,8 +180,10 @@ public class GalleryActivity extends AppCompatActivity {
         galleryFiles.remove(mCurrFile);
         mNotes.remove(file.getAbsolutePath());
         clearFile();
+        boolean first = true;
         for (Map.Entry<String, String> entry : mNotes.entrySet()) {
-            writeFile(entry.getKey(), entry.getValue());
+            writeFile(entry.getKey(), entry.getValue(), first);
+            first = false;
         }
         file.delete();
         mCurrFile -= 1;
