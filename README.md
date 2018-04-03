@@ -6,6 +6,7 @@
     - Kernel is 5x5 with a variance value of 10
 - Using the blurred, greyscale image apply canny edge detection with a low hysteresis of 30 and a high hysteresis of 60.
 	- Low hysteresis and high hysteresis are set to fairly low values to keep most of the edges (in case of poor gradients)
+- The edges are then dilated 5 times to increase them and remove any small gaps to help find the contours
 - Using the resulting edges, determine the contours that are present
 	- The contours are then sorted with the largest contour being used as the presumed document
 		- The contour must have at least 4 points to reduce false positives
@@ -15,6 +16,7 @@
 
 ##### Automatically finds the priced items in the taken image.
 - The cropped RGB image is converted to greyscale and then an inverse binary mask is applied to it with a range of 100-255 so that greyscale values falling in that range are turned to black and values not in it are turned to white. The assumption for this to work is that the text is black in the image, if it is not then this will not work.
+- The resulting mask is dilated 2 times to increase the size of text if it is small so that contours can be found.
 - In the cropped image, the contours are then found (which is the text and images in the document). These contours are filtered to remove false positives (if the contours are too small or too large). The contours are then further reduced by combining the bounding boxes on the contours if the horizontal difference between them are similar (ie. if they are on the same line then they become one). This is to make sure that the price and the name of the product are kept together.
 - The resulting text contours are fed to the OCR library Tesseract. The text that is found is kept only if a dollar sign and period are found in the resulting text.
 - The found prices are then put in a notes text box which can be editted before saving.
