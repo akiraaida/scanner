@@ -2,15 +2,15 @@
 
 ##### Automatically determines the receipt or piece of paper in frame.
 - Reads the current frame in and converts it to greyscale.
-- Applies a gaussian filter blur to remove noise on the greyscale image and maintain the edges
-    - Kernel is 5x5 with a variance value of 10
+- Applies a gaussian filter blur to remove noise on the greyscale image and maintain the edges.
+    - Kernel is 5x5 with a variance value of 10.
 - Using the blurred, greyscale image apply canny edge detection with a low hysteresis of 30 and a high hysteresis of 60.
-	- Low hysteresis and high hysteresis are set to fairly low values to keep most of the edges (in case of poor gradients)
-- The edges are then dilated 5 times to increase them and remove any small gaps to help find the contours
-- Using the resulting edges, determine the contours that are present
-	- The contours are then sorted with the largest contour being used as the presumed document
-		- The contour must have at least 4 points to reduce false positives
-		- The contour must be at least 50% of the height and width of the overall image to reduce false positives
+	- Low hysteresis and high hysteresis are set to fairly low values to keep most of the edges (in case of poor gradients).
+- The edges are then dilated 5 times to increase them and remove any small gaps to help find the contours.
+- Using the resulting edges, determine the contours that are present.
+	- The contours are then sorted with the largest contour being used as the presumed document.
+		- The contour must have at least 4 points to reduce false positives.
+		- The contour must be at least 50% of the height and width of the overall image to reduce false positives.
 - This frame is kept and then compared against the next frame found. If the contour's point are in the same position (with a 10% tolerance on those positions, it will be kept). This needs to happen 8 times in a row for the frame to be saved since it is the likely document.
 - Once the contour is found 8 times in a row, the image is cropped to just be the document found in frame and saved to storage as a RGB image.
 
