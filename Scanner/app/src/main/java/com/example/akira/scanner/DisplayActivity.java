@@ -9,6 +9,7 @@ import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -30,6 +31,8 @@ import org.opencv.imgproc.Imgproc;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -55,8 +58,8 @@ public class DisplayActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_display);
 
-        TextView textView = findViewById(R.id.dispText);
-        textView.setMovementMethod(new ScrollingMovementMethod());
+        EditText editText = findViewById(R.id.dispText);
+        editText.setMovementMethod(new ScrollingMovementMethod());
 
         mTess = new TessBaseAPI();
         mTess.init(this.getFilesDir().getAbsolutePath(), "eng");
@@ -65,9 +68,6 @@ public class DisplayActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-
-        File file = new File(mImgPath);
-        file.delete();
     }
 
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
@@ -79,9 +79,7 @@ public class DisplayActivity extends AppCompatActivity {
                     Log.i("onManager", "OpenCV loaded successfully");
                     Intent intent = getIntent();
                     mImgPath = intent.getStringExtra("imgPath");
-                    Log.d("AKIRA_SAVING_IMAGE8", "SAVING_IMAGE8");
                     loadImageFromStorage(mImgPath);
-                    Log.d("AKIRA_SAVING_IMAGE9", "SAVING_IMAGE9");
                 } break;
                 default:
                 {
@@ -240,27 +238,24 @@ public class DisplayActivity extends AppCompatActivity {
         if (!text.isEmpty()) {
             if (text.contains("$")) {
                 if (text.matches(".*\\d+.*") && text.contains(".")) {
-                    if (mText.isEmpty()) {
-                        mText = text;
-                    } else {
-                        mText += "\n" + text;
-                    }
+                    mText += text + "\n";
                 }
             }
         }
         if (mCounter == mPossibleText) {
-            TextView dispText = findViewById(R.id.dispText);
+            EditText editText = findViewById(R.id.dispText);
             Button detectBtn = findViewById(R.id.detectText);
             detectBtn.setTextColor(getResources().getColor(android.R.color.holo_green_dark));
             if (mText.isEmpty()) {
-                dispText.setText("No prices found.");
+                editText.setText("No prices found.");
             } else {
-                dispText.setText(mText);
+                editText.setText(mText);
             }
         }
     }
 
     public void onSave(View view) {
+        writeFile();
         Intent intent = new Intent(DisplayActivity.this, ScannerActivity.class);
         startActivity(intent);
         finish();
@@ -272,6 +267,18 @@ public class DisplayActivity extends AppCompatActivity {
         Intent intent = new Intent(DisplayActivity.this, ScannerActivity.class);
         startActivity(intent);
         finish();
+    }
+
+    public void writeFile(){
+        try{
+            File file = new File(this.getFilesDir().getAbsolutePath(), "notes.txt");
+            FileWriter writer = new FileWriter(file, true);
+            writer.append(mImgPath + "~,~\n" + mText);
+            writer.flush();
+            writer.close();
+        } catch (IOException e) {
+            Log.e("writeFile", "IOException: " + e.getStackTrace());
+        }
     }
 
     public void onDetect(View view) {

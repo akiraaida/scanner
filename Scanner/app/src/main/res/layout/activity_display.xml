@@ -21,7 +21,7 @@
             android:background="#000000"
             android:padding="1dp"/>
 
-        <TextView
+        <EditText
             android:id="@+id/dispText"
             android:layout_weight=".05"
             android:layout_width="match_parent"
