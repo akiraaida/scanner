@@ -4,6 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/black"
     tools:context="com.example.akira.scanner.GalleryActivity">
 
     <LinearLayout
@@ -21,6 +22,7 @@
             android:id="@+id/notes"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:background="@color/white"
             android:layout_weight=".1"
             android:ems="10"
             android:text="" />
@@ -44,8 +46,8 @@
                 android:id="@+id/deleteBtn"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:onClick="onDelete"
                 android:layout_weight="1"
+                android:onClick="onDelete"
                 android:text="@string/deleteBtn" />
 
             <Button
@@ -60,9 +62,9 @@
                 android:id="@+id/updateBtn"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:onClick="onUpdate"
                 android:layout_weight="1"
-                android:text="@string/update" />
+                android:onClick="onUpdate"
+                android:text="@string/saveBtn" />
 
             <Button
                 android:id="@+id/rightBtn"

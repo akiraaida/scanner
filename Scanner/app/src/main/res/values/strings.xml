@@ -1,10 +1,10 @@
 <resources>
     <string name="app_name">RScanner</string>
-    <string name="saveBtn">Save</string>
-    <string name="deleteBtn">Delete</string>
+    <string name="saveBtn">\u2713</string>
+    <string name="deleteBtn">\u2717</string>
     <string name="detectBtn">Detect</string>
     <string name="left"><![CDATA[<]]></string>
     <string name="right"><![CDATA[>]]></string>
-    <string name="home">Home</string>
+    <string name="home">\u2302</string>
     <string name="update">Update</string>
 </resources>
