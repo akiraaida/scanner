@@ -22,4 +22,4 @@
 - The found prices are then put in a notes text box which can be editted before saving.
 
 ##### Gallery View
-- A gallery view exists which allows the user to view past images, delete past images, and upadate the notes of images.
+- A gallery view exists which allows the user to view past images, delete past images, and update the notes of images.
