@@ -23,3 +23,5 @@
 
 ##### Gallery View
 - A gallery view exists which allows the user to view past images, delete past images, and update the notes of images.
+
+Logo made with Logomakr.com
